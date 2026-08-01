@@ -60,6 +60,11 @@ app.get("/api/health", (_req, res) => {
     status: "ok",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || "development",
+    cloudinary: {
+      cloud_name_set: !!process.env.CLOUDINARY_CLOUD_NAME,
+      api_key_set: !!process.env.CLOUDINARY_API_KEY,
+      api_secret_set: !!process.env.CLOUDINARY_API_SECRET,
+    },
   });
 });
 
