@@ -1,6 +1,18 @@
 import pool from "../db/pool.js";
 import { BREEDS } from "../utils/constants.js";
 
+function normalizeImageUrl(url) {
+  if (typeof url !== "string") return url;
+  if (!url.startsWith("http://")) return url;
+
+  // Keep local development URLs untouched.
+  if (/^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\//i.test(url)) {
+    return url;
+  }
+
+  return url.replace(/^http:\/\//i, "https://");
+}
+
 function calculateAgeMonths(dateString) {
   if (!dateString) return null;
   const dob = new Date(dateString);
@@ -66,7 +78,7 @@ function mapImageArray(images) {
   return list
     .map((img) => ({
       id: img.id,
-      url: img.image_url,
+      url: normalizeImageUrl(img.image_url),
       order: img.display_order ?? 0,
     }))
     .sort((a, b) => a.order - b.order);
