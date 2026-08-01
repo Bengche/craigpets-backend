@@ -64,8 +64,25 @@ app.get("/api/health", (_req, res) => {
       cloud_name_set: !!process.env.CLOUDINARY_CLOUD_NAME,
       api_key_set: !!process.env.CLOUDINARY_API_KEY,
       api_secret_set: !!process.env.CLOUDINARY_API_SECRET,
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || null,
     },
   });
+});
+
+app.get("/api/cloudinary-ping", async (_req, res) => {
+  try {
+    const { v2 as cloudinary } = await import("cloudinary");
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+    const result = await cloudinary.api.ping();
+    return res.json({ ok: true, result });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message, http_code: err.http_code });
+  }
 });
 
 app.use("/api/cats", catRoutes);
