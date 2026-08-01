@@ -1,4 +1,42 @@
-import { v2 as cloudinary } from "cloudinary";
+import crypto from "crypto";
+
+function signUploadParams(params, apiSecret) {
+  const sorted = Object.keys(params)
+    .sort()
+    .map((k) => `${k}=${params[k]}`)
+    .join("&");
+  return crypto.createHash("sha1").update(sorted + apiSecret).digest("hex");
+}
+
+async function uploadToCloudinary(buffer, mimetype, { cloudName, apiKey, apiSecret, folder }) {
+  const timestamp = Math.round(Date.now() / 1000);
+  const paramsToSign = { folder, timestamp };
+  const signature = signUploadParams(paramsToSign, apiSecret);
+
+  const form = new FormData();
+  form.append("file", new Blob([buffer], { type: mimetype }));
+  form.append("api_key", apiKey);
+  form.append("timestamp", String(timestamp));
+  form.append("signature", signature);
+  form.append("folder", folder);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    { method: "POST", body: form }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const msg = data?.error?.message || JSON.stringify(data);
+    const err = new Error(`Cloudinary ${response.status}: ${msg}`);
+    err.status = response.status;
+    err.cloudinaryData = data;
+    throw err;
+  }
+
+  return data;
+}
 
 export async function handleImageUpload(req, res) {
   const files = req.files ?? [];
@@ -7,26 +45,24 @@ export async function handleImageUpload(req, res) {
     return res.status(400).json({ message: "No files received" });
   }
 
-  // Configure at request time — guarantees env vars are present regardless
-  // of ES-module import order.
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
-
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
   const folder = process.env.CLOUDINARY_FOLDER || "craigpets";
+
+  if (!cloudName || !apiKey || !apiSecret) {
+    return res.status(500).json({ message: "Cloudinary env vars not configured" });
+  }
+
   const images = [];
 
   try {
     for (const file of files) {
-      // Use base64 data-URI upload — simpler and avoids stream-specific issues.
-      const dataUri = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-
-      const result = await cloudinary.uploader.upload(dataUri, {
+      const result = await uploadToCloudinary(file.buffer, file.mimetype, {
+        cloudName,
+        apiKey,
+        apiSecret,
         folder,
-        resource_type: "image",
       });
 
       images.push({
@@ -37,12 +73,11 @@ export async function handleImageUpload(req, res) {
       });
     }
   } catch (err) {
-    console.error("Cloudinary upload error:", err);
-    return res
-      .status(502)
-      .json({ message: "Image upload failed: " + err.message });
+    console.error("Cloudinary upload error:", err.message, err.cloudinaryData ?? "");
+    return res.status(502).json({ message: err.message });
   }
 
   return res.status(201).json({ images });
 }
+
 
