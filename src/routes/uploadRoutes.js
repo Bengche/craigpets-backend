@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import multer from "multer";
 import { Router } from "express";
 import { handleImageUpload } from "../controllers/uploadController.js";
@@ -10,25 +8,9 @@ import {
   MAX_IMAGE_SIZE_BYTES,
 } from "../utils/constants.js";
 
-const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const timestamp = Date.now();
-    const random = Math.round(Math.random() * 1e9);
-    const sanitized = file.originalname.replace(/[^a-zA-Z0-9.\-]/g, "_");
-    const filename = `${timestamp}_${random}_${sanitized}`;
-    cb(null, filename);
-  },
-});
-
+// Store files in memory — Cloudinary receives the buffer directly.
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: MAX_IMAGE_SIZE_BYTES,
     files: MAX_IMAGE_COUNT,
@@ -49,7 +31,7 @@ router.post(
   authenticate,
   requireAdmin,
   upload.array("images", MAX_IMAGE_COUNT),
-  handleImageUpload
+  handleImageUpload,
 );
 
 export default router;

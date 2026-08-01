@@ -13,21 +13,31 @@ function getPublicBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
-export function handleImageUpload(req, res) {
+import { uploadBuffer } from "../lib/cloudinary.js";
+
+export async function handleImageUpload(req, res) {
   const files = req.files ?? [];
 
   if (!files.length) {
     return res.status(400).json({ message: "No files received" });
   }
 
-  const baseUrl = getPublicBaseUrl(req);
+  const folder = process.env.CLOUDINARY_FOLDER || "craigpets";
+  const images = [];
 
-  const images = files.map((file) => ({
-    filename: file.filename,
-    url: `${baseUrl}/uploads/${file.filename}`,
-    mimetype: file.mimetype,
-    size: file.size,
-  }));
+  for (const file of files) {
+    const result = await uploadBuffer(file.buffer, {
+      folder,
+      resource_type: "image",
+    });
+
+    images.push({
+      filename: result.public_id,
+      url: result.secure_url,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+  }
 
   return res.status(201).json({ images });
 }

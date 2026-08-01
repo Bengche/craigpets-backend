@@ -57,7 +57,7 @@ function mapCatRow(row) {
 function sanitizeBreed(breed) {
   if (!breed) return undefined;
   const match = BREEDS.find(
-    (item) => item.toLowerCase() === String(breed).toLowerCase()
+    (item) => item.toLowerCase() === String(breed).toLowerCase(),
   );
   return match;
 }
@@ -150,7 +150,7 @@ export async function getCats(req, res) {
 
   if (search) {
     filters.push(
-      `(LOWER(name) LIKE LOWER($${idx}) OR LOWER(short_description) LIKE LOWER($${idx}))`
+      `(LOWER(name) LIKE LOWER($${idx}) OR LOWER(short_description) LIKE LOWER($${idx}))`,
     );
     values.push(`%${search}%`);
     idx += 1;
@@ -252,7 +252,7 @@ export async function createCat(req, res) {
   `;
 
   const colorValue =
-    typeof color === "string" ? color.trim() || null : color ?? null;
+    typeof color === "string" ? color.trim() || null : (color ?? null);
 
   const values = [
     name,
@@ -283,7 +283,7 @@ export async function createCat(req, res) {
       if (!url) continue;
       await pool.query(
         `INSERT INTO cat_images (cat_id, image_url, display_order) VALUES ($1, $2, $3)`,
-        [catId, url, order]
+        [catId, url, order],
       );
       order += 1;
     }
@@ -297,7 +297,7 @@ export async function createCat(req, res) {
     WHERE c.id = $1
     GROUP BY c.id
   `,
-    [catId]
+    [catId],
   );
 
   const cat = {
@@ -377,7 +377,7 @@ export async function updateCat(req, res) {
   `;
 
   const colorValue =
-    typeof color === "string" ? color.trim() || null : color ?? null;
+    typeof color === "string" ? color.trim() || null : (color ?? null);
 
   const values = [
     name,
@@ -412,7 +412,7 @@ export async function updateCat(req, res) {
       if (!url) continue;
       await pool.query(
         `INSERT INTO cat_images (cat_id, image_url, display_order) VALUES ($1, $2, $3)`,
-        [id, url, order]
+        [id, url, order],
       );
       order += 1;
     }
