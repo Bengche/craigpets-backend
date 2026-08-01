@@ -1,18 +1,3 @@
-function getPublicBaseUrl(req) {
-  const configured = process.env.PUBLIC_BASE_URL?.trim();
-  if (configured) {
-    return configured.replace(/\/$/, "");
-  }
-
-  const forwardedProto = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const forwardedHost = req.get("x-forwarded-host")?.split(",")[0]?.trim();
-
-  const protocol = forwardedProto || req.protocol || "http";
-  const host = forwardedHost || req.get("host");
-
-  return `${protocol}://${host}`;
-}
-
 import { uploadBuffer } from "../lib/cloudinary.js";
 
 export async function handleImageUpload(req, res) {
@@ -25,18 +10,25 @@ export async function handleImageUpload(req, res) {
   const folder = process.env.CLOUDINARY_FOLDER || "craigpets";
   const images = [];
 
-  for (const file of files) {
-    const result = await uploadBuffer(file.buffer, {
-      folder,
-      resource_type: "image",
-    });
+  try {
+    for (const file of files) {
+      const result = await uploadBuffer(file.buffer, {
+        folder,
+        resource_type: "image",
+      });
 
-    images.push({
-      filename: result.public_id,
-      url: result.secure_url,
-      mimetype: file.mimetype,
-      size: file.size,
-    });
+      images.push({
+        filename: result.public_id,
+        url: result.secure_url,
+        mimetype: file.mimetype,
+        size: file.size,
+      });
+    }
+  } catch (err) {
+    console.error("Cloudinary upload error:", err);
+    return res
+      .status(502)
+      .json({ message: "Image upload failed: " + err.message });
   }
 
   return res.status(201).json({ images });
